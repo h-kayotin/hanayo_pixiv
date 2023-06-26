@@ -75,7 +75,7 @@ class PixivHana(object):
             print("读取失败")
 
     def download_thread(self):
-        """多线程进行下载，多页的还是放一个文件夹吧"""
+        """多线程进行下载，多页的还是放一个文件夹吧。。。"""
         with ThreadPoolExecutor(max_workers=16) as pool:
             for image in self.images_list:
                 download_headers = self.headers
