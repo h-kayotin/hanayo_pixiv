@@ -13,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 class PixivHana(object):
 
     def __init__(self):
-        self.save_path = ""
+        self.save_path = "output/"
         self.cookie = cookie
         self.agent = agent
         self.images_list = list()
@@ -23,6 +23,7 @@ class PixivHana(object):
         self.get_headers()
         self.get_weekly_pids()
         self.get_urls_thread()
+        self.download_thread()
 
     def get_headers(self):
         self.headers ={
@@ -63,15 +64,18 @@ class PixivHana(object):
                             image=image,
                             url=image["re_url"],
                             headers=self.headers)
-        for image in self.images_list:
-            print(image)
 
     @staticmethod
     def download_pic(url, headers, path, name):
-        pass
+        resp = requests.get(url, headers=headers)
+        if resp.status_code == 200:
+            with open(f"{path}{name}", "wb") as file:
+                file.write(resp.content)
+        else:
+            print("读取失败")
 
     def download_thread(self):
-        """多线程进行下载"""
+        """多线程进行下载，多页的还是放一个文件夹吧"""
         with ThreadPoolExecutor(max_workers=16) as pool:
             for image in self.images_list:
                 download_headers = self.headers
@@ -79,16 +83,16 @@ class PixivHana(object):
                 index = 1
                 for down_url in image["download_url"]:
                     pic_type = down_url.split(".")[-1]
-                    if index > 1:
-                        pic_name = f"{image['title']}_{image['user_name']}_{image['p_id']}_.{pic_type}"
+                    if len(image["download_url"]) > 1:
+                        pic_name = f"{image['title']}_{image['user_name']}_p{index}.{pic_type}"
                     else:
-                        pic_name = f"{image['title']}_{image['user_name']}_{image['p_id']}_.{pic_type}"
+                        pic_name = f"{image['title']}_{image['user_name']}.{pic_type}"
                     index += 1
-                    pool.submit(self.get_download_url,
+                    pool.submit(self.download_pic,
                                 url=down_url,
                                 headers=download_headers,
+                                path=self.save_path,
                                 name=pic_name)
-
 
 
 if __name__ == '__main__':
