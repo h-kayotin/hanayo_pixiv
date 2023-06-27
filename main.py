@@ -13,7 +13,7 @@ headers = {
     'Cookie': cookie
 }
 
-day_male_url = "https://www.pixiv.net/ranking.php?mode=male"
+rank_male_url = "https://www.pixiv.net/ranking.php?mode=male&p=1&format=json"
 
 weekly_url = "https://www.pixiv.net/ranking.php?mode=weekly&p=1&format=json"
 res = requests.get(weekly_url, headers=headers)
