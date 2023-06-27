@@ -6,7 +6,7 @@ Date： 2023/6/26
 """
 
 import requests
-from exp_pic.cookie_p import agent, cookie
+from static.config import agent, ico_code
 from concurrent.futures import ThreadPoolExecutor
 from tkinter.filedialog import askdirectory
 import ttkbootstrap as ttk
@@ -15,6 +15,8 @@ from ttkbootstrap import utility
 import pathlib
 from queue import Queue
 from threading import Thread
+import base64
+import os
 
 
 class PixivHana(ttk.Frame):
@@ -30,7 +32,8 @@ class PixivHana(ttk.Frame):
         master.title("hanayo_pixiv")
 
         # 一些搜索需要的属性
-        self.cookie = cookie
+        self.cookie = ""
+        self.get_cookie()
         self.agent = agent
         self.images_list = list()
         self.headers = {}
@@ -66,6 +69,11 @@ class PixivHana(ttk.Frame):
             style="striped-success"
         )
         self.progressbar.pack(fill=X, expand=YES)
+
+    def get_cookie(self):
+        path = pathlib.Path().absolute()
+        with open(f"{path}/my_cookie.txt", "r", encoding="utf-8") as file:
+            self.cookie = file.read()
 
     def path_row(self):
         path_row = ttk.Frame(self.option_lf)
@@ -164,7 +172,7 @@ class PixivHana(ttk.Frame):
         # 初始化列标题，用scale_size去调整列宽
         self.table_area.heading(0, text='标题', anchor=W)
         self.table_area.heading(1, text='作者', anchor=W)
-        self.table_area.heading(2, text='P_ID', anchor=E)
+        self.table_area.heading(2, text='Pixiv_ID', anchor=E)
         self.table_area.heading(3, text='下载情况', anchor=E)
         self.table_area.column(
             column=0,
@@ -308,6 +316,7 @@ class PixivHana(ttk.Frame):
                                 is_last=is_last,
                                 )
         PixivHana.is_downloading = False
+        self.progressbar.stop()
 
     def check_queue(self, iid=None):
         # 如果队列不为空,而且正在下载，就执行一次插入，然后200ms再检查队列
@@ -345,7 +354,7 @@ class PixivHana(ttk.Frame):
 
 
 if __name__ == '__main__':
-    root = ttk.Window("hana_pixiv", "journal")
+    root = ttk.Window("hana_pixiv", "cerculean")
     PixivHana(root)
     win_width = 750
     win_height = 450
@@ -354,4 +363,9 @@ if __name__ == '__main__':
     x = int((screen_width / 2) - (win_width / 2))
     y = int((screen_height / 2) - (win_height / 2))
     root.geometry(f'{win_width}x{win_height}+{x}+{y}')
+    tmp = open("tmp.ico", "wb+")
+    tmp.write(base64.b64decode(ico_code))
+    tmp.close()
+    root.iconbitmap("tmp.ico")
+    os.remove("tmp.ico")
     root.mainloop()

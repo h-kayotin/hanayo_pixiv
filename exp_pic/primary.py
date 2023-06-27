@@ -1,12 +1,12 @@
 """
-main - 爬虫实践之pixiv
+main - 爬虫实践之pixiv 这个可以说是一步一步试的过程了
 
 Author: hanayo
 Date： 2023/6/12
 """
 
 import requests
-from exp_pic.cookie_p import cookie, agent
+from static.config import cookie, agent
 
 headers = {
     'User-Agent': agent,
@@ -18,7 +18,7 @@ rank_male_url = "https://www.pixiv.net/ranking.php?mode=male&p=1&format=json"
 weekly_url = "https://www.pixiv.net/ranking.php?mode=weekly&p=1&format=json"
 res = requests.get(weekly_url, headers=headers)
 datas = res.json()["contents"]
-images_list =[]
+images_list = []
 for data in datas:
     image = {
         "title": data["title"],
