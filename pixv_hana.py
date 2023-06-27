@@ -35,7 +35,8 @@ class PixivHana(ttk.Frame):
         self.images_list = list()
         self.headers = {}
         self.download_type = {
-            "weekly": "https://www.pixiv.net/ranking.php?mode=male&p=1&format=json",
+            "weekly": "https://www.pixiv.net/ranking.php?mode=weekly&p=1&format=json",
+            "daily": "https://www.pixiv.net/ranking.php?p=1&format=json",
             "male": "https://www.pixiv.net/ranking.php?mode=male&p=1&format=json",
             "male_r18": "https://www.pixiv.net/ranking.php?mode=male_r18&p=1&format=json"
         }
@@ -44,14 +45,14 @@ class PixivHana(ttk.Frame):
         _path = pathlib.Path().absolute().as_posix()
         self.save_path = ttk.StringVar(value=f"{_path}/output")
         self.type_var = ttk.StringVar(value="weekly")
-        self.pages_var = ttk.StringVar(value="20")
+        self.pages_var = ttk.StringVar(value="10")
 
         # 创建顶部的Labelframe块
         option_text = "请选择保存路径和下载模式，然后点击开始"
         self.option_lf = ttk.Labelframe(self, text=option_text, padding=15)
         self.option_lf.pack(fill=X, expand=YES, anchor=N)
 
-        # 创建选择保存路径那一行
+        # 创建下部的界面，选择路径、下载张数、下载类型以及结果表格
         self.path_row()
         self.pages_row()
         self.types_row()
@@ -117,6 +118,14 @@ class PixivHana(ttk.Frame):
         weekly_opt.pack(side=LEFT)
         weekly_opt.invoke()
 
+        daily_opt = ttk.Radiobutton(
+            master=type_row,
+            text="日榜",
+            variable=self.type_var,
+            value="daily"
+        )
+        daily_opt.pack(side=LEFT, padx=15)
+
         male_opt = ttk.Radiobutton(
             master=type_row,
             text="男性向",
@@ -155,7 +164,7 @@ class PixivHana(ttk.Frame):
         # 初始化列标题，用scale_size去调整列宽
         self.table_area.heading(0, text='标题', anchor=W)
         self.table_area.heading(1, text='作者', anchor=W)
-        self.table_area.heading(2, text='P_ID', anchor=W)
+        self.table_area.heading(2, text='P_ID', anchor=E)
         self.table_area.heading(3, text='下载情况', anchor=E)
         self.table_area.column(
             column=0,
@@ -225,7 +234,7 @@ class PixivHana(ttk.Frame):
             self.images_list.append(image)
             if len(self.images_list) == int(self.pages_var.get()):
                 break
-        print("周榜pid已收集")
+        # print("周榜pid已收集")
 
     @staticmethod
     def get_download_url(image, url, headers):
@@ -245,7 +254,7 @@ class PixivHana(ttk.Frame):
                             headers=self.headers)
 
     @staticmethod
-    def download_pic(url, headers, path, name, image):
+    def download_pic(url, headers, path, name, image, is_last):
         resp = requests.get(url, headers=headers)
         row_info = {
             "title": image["title"],
@@ -254,62 +263,70 @@ class PixivHana(ttk.Frame):
             "status": ""
         }
         if resp.status_code == 200:
+            row_info["status"] = "下载成功"
+            if is_last:
+                PixivHana.queue.put(row_info)
             with open(f"{path}/{name}", "wb") as file:
                 file.write(resp.content)
-                row_info["status"] = "下载成功"
         else:
             row_info["status"] = "下载失败"
-        PixivHana.queue.put(row_info)
+            PixivHana.queue.put(row_info)
 
     def download_thread(self):
-        """多线程进行下载，多页的还是放一个文件夹吧test"""
-        self.is_downloading = True
-        iid = self.table_area.insert(
-            # 插入在根进节点，插入在最后
-            parent='',
-            index=END,
-        )
-        self.table_area.item(iid, open=True)
-        # 100ms后执行检查队列
-        self.after(200, lambda: self.check_queue(iid))
+        """多线程进行下载，多页放一个文件夹"""
+        PixivHana.is_downloading = True
+        self.after(500, lambda: self.check_queue())
         with ThreadPoolExecutor(max_workers=16) as pool:
             for image in self.images_list:
                 download_headers = self.headers
                 download_headers["referer"] = image["referer"]
                 index = 1
+                # 这个变量用来判断多p是否都下载了，下载最后一p才推送入队列
+                is_last = False
                 for down_url in image["download_url"]:
                     pic_type = down_url.split(".")[-1]
+                    save_path = self.save_path.get()
                     if len(image["download_url"]) > 1:
-                        pic_name = f"{image['title']}_{image['user_name']}_p{index}.{pic_type}"
+                        dic_name = f"{image['title']}_{image['user_name']}"
+                        dic_path = f"{self.save_path.get()}/{dic_name}"
+                        dic_path = pathlib.Path(dic_path)
+                        if not dic_path.exists():
+                            dic_path.mkdir()
+                        pic_name = f"p{index}.{pic_type}"
+                        save_path = dic_path
                     else:
                         pic_name = f"{image['title']}_{image['user_name']}.{pic_type}"
+                    if index == len(image["download_url"]):
+                        is_last = True
                     index += 1
                     pool.submit(self.download_pic,
                                 url=down_url,
                                 headers=download_headers,
-                                path=self.save_path.get(),
+                                path=save_path,
                                 name=pic_name,
-                                image=image)
-        self.is_downloading = False
+                                image=image,
+                                is_last=is_last,
+                                )
+        PixivHana.is_downloading = False
 
-    def check_queue(self, iid):
-        # 如果队列不为空,而且正在下载，就执行一次插入，然后500ms再检查队列
+    def check_queue(self, iid=None):
+        # 如果队列不为空,而且正在下载，就执行一次插入，然后200ms再检查队列
         if not PixivHana.queue.empty() and PixivHana.is_downloading:
             image = PixivHana.queue.get()
             self.insert_row(image, iid)
             self.update_idletasks()
-            self.after(500, lambda: self.check_queue(iid))
+            self.after(200, lambda: self.check_queue(iid))
             self.update_idletasks()
         # 如果下载已结束，队列不为空，就用while循环插入
         elif not PixivHana.is_downloading and not PixivHana.queue.empty():
             while not PixivHana.queue.empty():
                 image = PixivHana.queue.get()
                 self.insert_row(image, iid)
-            self.update_idletasks()
+                self.update_idletasks()
             # 循环结束后，结束进度条
             self.progressbar.stop()
         # 如果还在下载，但是队列为空，那就过个500ms再来检查队列
-        elif not PixivHana.is_downloading and PixivHana.queue.empty():
+        elif PixivHana.is_downloading and PixivHana.queue.empty():
             self.after(500, lambda: self.check_queue(iid))
         else:
             self.progressbar.stop()
