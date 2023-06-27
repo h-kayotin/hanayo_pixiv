@@ -24,17 +24,17 @@ P站需要登录才能访问，以下步骤可以获取cookie
 如下图所示：
 
 <p align="center">
-  <img src="static/get_cookie.png" alt="如何获取cookie" width=800/>
+  <img src="static/get_cookie.png" alt="如何获取cookie" width=800 />
 </p>
 
 
 ### 如何使用
-请获取cookie后，放在同目录的my_cookie.txt中
+请获取cookie后，完整复制，然后放在同目录的my_cookie.txt中
 
 然后运行主程序即可，所需库见requirements.txt
 
 也可以选择下载release版
 
 <p align="center">
-  <img src="static/main_page.png" alt="程序主界面" width=800/>
+  <img src="static/main_page.png" alt="程序主界面" width=600 />
 </p>
