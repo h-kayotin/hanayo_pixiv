@@ -46,6 +46,9 @@ class PixivHana(ttk.Frame):
 
         # 默认保存位置，以及默认下载周榜，默认张数
         _path = pathlib.Path().absolute().as_posix()
+        default_path = pathlib.Path(f"{_path}/output")
+        if not default_path.exists():
+            default_path.mkdir()
         self.save_path = ttk.StringVar(value=f"{_path}/output")
         self.type_var = ttk.StringVar(value="weekly")
         self.pages_var = ttk.StringVar(value="10")
