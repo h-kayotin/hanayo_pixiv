@@ -9,6 +9,7 @@ import datetime
 import requests
 from bs4 import BeautifulSoup
 import json
+from concurrent.futures import ThreadPoolExecutor
 
 
 class ShellSpider:
@@ -46,26 +47,59 @@ class ShellSpider:
         for item in links_items:
             area = {
                 "name_cn": item.text,
-                "url": f"https://sh.ke.com/{item.get('href')}"
+                "url": f"https://sh.ke.com/{item.get('href')}",
+                "towns": [
+                    # {
+                    #     "name": "北蔡",
+                    #     "url": "...",
+                    #     "page_num": ""
+                    # }
+                ]
             }
             self.areas.append(area)
 
+    @staticmethod
+    def get_towns(url, area):
+        """获取每个区下面有几个镇，比如普陀区真如板块"""
+        bs_html = ShellSpider.get_bs_html(url)
+        divs = bs_html.find_all("div", {"data-role": "ershoufang"})
+        items = divs[0].find_all("a", {"class": ""})
+        for item in items:
+            town = {
+                "name": item.text,
+                "url": f"https://sh.ke.com/{item.get('href')}"
+            }
+            area["towns"].append(town)
 
-        # page = f'http://{self.city}.ke.com/ershoufang/{2}/'
+    @staticmethod
+    def get_bs_html(url):
+        """这两句反复用到，所以作成个方法了"""
+        resp = requests.get(url)
+        bs_html = BeautifulSoup(resp.content, "html.parser")
+        return bs_html
 
-    def get_pages_by_area(self):
-        """根据各个区域，获取共有多少页"""
-        for area in self.areas:
-            url = area["url"]
-            resp = requests.get(url)
-            bs_html = BeautifulSoup(resp.content, "html.parser")
-            pages = bs_html.find_all("div", {
-                "class": "page-box house-lst-page-box",
-                "comp-module": "page"
-            })
-            # print(pages)
-            page_dict = json.loads(pages[0].get("page-data"))
-            area["pages"] = page_dict["totalPage"]
+    @staticmethod
+    def get_page_num(url, town):
+        """获取共有多少页"""
+        bs_html = ShellSpider.get_bs_html(url)
+        pages = bs_html.find_all("div", {
+            "class": "page-box house-lst-page-box",
+            "comp-module": "page"
+        })
+        page_dict = json.loads(pages[0].get("page-data"))
+        town["page_num"] = page_dict["totalPage"]
+
+    def get_towns_by_area(self):
+        """根据各个区域，获取共有多少镇"""
+        with ThreadPoolExecutor(max_workers=16) as pool:
+            for area in self.areas:
+                pool.submit(ShellSpider.get_towns, url=area["url"], area=area)
+
+    def get_pages_by_town(self):
+        with ThreadPoolExecutor(max_workers=50) as pool:
+            for area in self.areas:
+                for town in area["towns"]:
+                    pool.submit(ShellSpider.get_page_num, url=town["url"], town=town)
 
     def start(self):
         """根据每页的链接，来进行爬取"""
@@ -79,6 +113,7 @@ if __name__ == '__main__':
     my_spider = ShellSpider("shell")
     print(my_spider)
     my_spider.get_areas()
-    my_spider.get_pages_by_area()
+    my_spider.get_towns_by_area()
+    my_spider.get_pages_by_town()
     print(my_spider.areas)
 
