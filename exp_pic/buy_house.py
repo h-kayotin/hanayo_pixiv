@@ -6,6 +6,7 @@ Date 2023/7/16
 """
 import os
 import datetime
+import requests
 
 
 class ShellSpider:
@@ -20,6 +21,7 @@ class ShellSpider:
         self.city = city
         self.city_cn = ShellSpider.city_names[self.city]
         self.date_string = datetime.date.today()
+        self.city_url = f"https://{self.city}.ke.com/ershoufang/"
         self.check_folder()
 
     def __str__(self):
@@ -33,7 +35,19 @@ class ShellSpider:
 
     def get_areas(self):
         """获取一个城市所有的区域"""
-        page = f'http://{self.city}.ke.com/ershoufang/{2}/'
+        # https://sh.ke.com/ershoufang/
+        resp = requests.get(self.city_url)
+        # page = f'http://{self.city}.ke.com/ershoufang/{2}/'
+
+    def get_pages_by_area(self):
+        """根据各个区域，获取共有多少页"""
+
+
+    def start(self):
+        """根据每页的链接，来进行爬取"""
+
+    def save_data(self):
+        """把爬取到的数据，保存到excel"""
 
 
 if __name__ == '__main__':
