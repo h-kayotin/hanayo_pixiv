@@ -51,7 +51,7 @@ P站需要登录才能访问，以下步骤可以获取cookie
 1. `https://sh.ke.com/ershoufang`
     
     简单分析下这个页面，我们知道房子信息是按照各个区区分的，如下图所示：
-    <p align="center">
+   <p align="center">
       <img src="static/areas.png" alt="程序主界面" width=600 />
    </p>
 
