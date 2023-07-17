@@ -14,8 +14,6 @@ import pandas as pd
 import re
 from threading import RLock
 import time
-import pathlib
-import openpyxl
 
 
 def fmt_info(src_info):
@@ -38,7 +36,7 @@ def fmt_price(price):
 
 
 class ShellSpider:
-
+    # 如需其他城市，请先在这添加城市代码
     city_names = {
         "sh": "上海",
         "gz": "广州"
@@ -47,7 +45,7 @@ class ShellSpider:
     house_info_df = pd.DataFrame(columns=columns, index=range(0))
     lock = RLock()
 
-    def __init__(self, name, city="sh"):
+    def __init__(self, name, city="sh", mysql=False):
         self.name = name
         self.city = city
         self.city_cn = ShellSpider.city_names[self.city]
@@ -56,7 +54,7 @@ class ShellSpider:
         self.save_path = self.check_folder()
         self.areas = list()
         self.excel_name = f"{self.save_path}/房价数据.xlsx"
-        self.total_row_num = 0
+        self.is_mysql = mysql
 
     def __str__(self):
         return f"开始爬取来自{self.name}的{self.city_cn}的二手房数据，今天是{self.date_string}。"
@@ -75,7 +73,7 @@ class ShellSpider:
         resp = requests.get(self.city_url)
         bs_html = BeautifulSoup(resp.content, "html.parser")
         links_items = bs_html.find_all("a", {"class": "CLICKDATA",
-                                          "data-action": "source_type=PC小区列表筛选条件点击"})
+                                             "data-action": "source_type=PC小区列表筛选条件点击"})
         for item in links_items:
             area = {
                 "name_cn": item.text,
@@ -196,8 +194,8 @@ class ShellSpider:
 if __name__ == '__main__':
     start = time.time()
     my_spider = ShellSpider("shell")
+    # my_spider = ShellSpider("shell", city="gz", mysql=True)
     print(my_spider)
     my_spider.start()
     cost_time = time.time() - start
     print(f"运行完毕，共耗时{cost_time:.2f}秒。")
-
