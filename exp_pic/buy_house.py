@@ -10,6 +10,31 @@ import requests
 from bs4 import BeautifulSoup
 import json
 from concurrent.futures import ThreadPoolExecutor
+import pandas as pd
+import re
+from threading import RLock
+import time
+import pathlib
+import openpyxl
+
+
+def fmt_info(src_info):
+    """格式化一下获取到的房子信息，去掉换行和空格"""
+    info = str(src_info).replace("\n", "").replace(" ", "")
+    return info
+
+
+def fmt_price(price):
+    """将带单位的数字，转换成浮点型数字"""
+    # 首先去掉逗号
+    string_num = re.sub(r',', '', price)
+
+    # 使用正则表达式提取数字
+    number = re.findall(r'\d+', string_num)[0]
+
+    # 将提取的数字转换为float类型
+    float_num = float(number)
+    return float_num
 
 
 class ShellSpider:
@@ -18,6 +43,9 @@ class ShellSpider:
         "sh": "上海",
         "gz": "广州"
     }
+    columns = ["行政区", "街道", "小区", "房屋信息", "总价（万元）", "单价（元）"]
+    house_info_df = pd.DataFrame(columns=columns, index=range(0))
+    lock = RLock()
 
     def __init__(self, name, city="sh"):
         self.name = name
@@ -25,8 +53,10 @@ class ShellSpider:
         self.city_cn = ShellSpider.city_names[self.city]
         self.date_string = datetime.date.today()
         self.city_url = f"https://{self.city}.ke.com/ershoufang/"
-        self.check_folder()
+        self.save_path = self.check_folder()
         self.areas = list()
+        self.excel_name = f"{self.save_path}/房价数据.xlsx"
+        self.total_row_num = 0
 
     def __str__(self):
         return f"开始爬取来自{self.name}的{self.city_cn}的二手房数据，今天是{self.date_string}。"
@@ -36,6 +66,7 @@ class ShellSpider:
         folder_name = f"datas/house/{self.city_cn}{self.date_string}"
         if not os.path.exists(folder_name):
             os.makedirs(folder_name)
+        return folder_name
 
     def get_areas(self):
         """获取一个城市所有的区域"""
@@ -110,19 +141,63 @@ class ShellSpider:
                     pool.submit(ShellSpider.get_page_num, url=town["url"], town=town)
         print("页数读取完毕。\n")
 
+    def get_info_by_page(self):
+        print("开始根据街道和页数信息获取二手房数据-->")
+        with ThreadPoolExecutor(max_workers=50) as pool:
+            for area in self.areas:
+                for town in area["towns"]:
+                    print(f"开始读取{town['name']}的数据-->")
+                    for page_num in range(1, town["page_num"] + 1):
+                        url = f"{town['url']}pg{page_num}/"
+                        pool.submit(ShellSpider.get_info,
+                                    url=url, town_name=town["name"],
+                                    area_name=area["name_cn"])
+        print(f"二手房数据读取完毕。\n")
+
+    @staticmethod
+    def get_info(url, town_name, area_name):
+        bs_html = ShellSpider.get_bs_html(url)
+        info_divs = bs_html.find_all("div", {"class": "info clear"})
+        for info_div in info_divs:
+            # 分别获取小区名，房屋信息，总价，单价
+            community_name = fmt_info(info_div.find('div', class_='positionInfo').text)
+            house_info = fmt_info(info_div.find('div', class_='houseInfo').text)
+            total_price = fmt_info(info_div.find('div', class_='totalPrice totalPrice2').text)
+            total_price = fmt_price(total_price)
+            unit_price = fmt_info(info_div.find('div', class_='unitPrice').text)
+            unit_price = fmt_price(unit_price)
+            row = [area_name, town_name, community_name, house_info, total_price, unit_price]
+            # 为了防止多个线程同时修改同一行数据导致数据不一致，加上线程锁
+            ShellSpider.lock.acquire()
+            ShellSpider.house_info_df.loc[len(ShellSpider.house_info_df)] = row
+            # 写入后解锁
+            ShellSpider.lock.release()
+        if len(ShellSpider.house_info_df) % 1000 >= 900:
+            print(f"爬虫全力运行中，本次读取了{town_name}的一页数据，当前Dataframe中"
+                  f"有{len(ShellSpider.house_info_df)}条数据。")
+
     def start(self):
         """根据每页的链接，来进行爬取"""
         self.get_areas()
         self.get_towns_by_area()
         self.get_pages_by_town()
+        self.get_info_by_page()
+        print(f"共获取到{len(self.house_info_df)}条数据。")
+        self.save_data()
 
     def save_data(self):
         """把爬取到的数据，保存到excel"""
-        pass
+        print("开始写入到Excel--->", end="")
+        excel_name = f"{self.save_path}/房价数据.xlsx"
+        self.house_info_df.to_excel(excel_name, index=True)
+        print("写入Excel完毕。\n")
 
 
 if __name__ == '__main__':
+    start = time.time()
     my_spider = ShellSpider("shell")
+    print(my_spider)
     my_spider.start()
-    print(my_spider.areas)
+    cost_time = time.time() - start
+    print(f"运行完毕，共耗时{cost_time:.2f}秒。")
 
