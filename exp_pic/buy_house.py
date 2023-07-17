@@ -40,6 +40,7 @@ class ShellSpider:
     def get_areas(self):
         """获取一个城市所有的区域"""
         # https://sh.ke.com/ershoufang/
+        print(f"正在获取{self.city_cn}的所有行政区信息-->", end="")
         resp = requests.get(self.city_url)
         bs_html = BeautifulSoup(resp.content, "html.parser")
         links_items = bs_html.find_all("a", {"class": "CLICKDATA",
@@ -57,6 +58,7 @@ class ShellSpider:
                 ]
             }
             self.areas.append(area)
+        print(f"{self.city_cn}的{len(self.areas)}个区的信息已获取完毕。\n")
 
     @staticmethod
     def get_towns(url, area):
@@ -91,29 +93,36 @@ class ShellSpider:
 
     def get_towns_by_area(self):
         """根据各个区域，获取共有多少镇"""
+        print("正在获取各行政区下属的街道-->", end="")
+        town_total = 0
         with ThreadPoolExecutor(max_workers=16) as pool:
             for area in self.areas:
                 pool.submit(ShellSpider.get_towns, url=area["url"], area=area)
+        for area in self.areas:
+            town_total += len(area["towns"])
+        print(f"街道数量共有{town_total}个获取完毕。\n")
 
     def get_pages_by_town(self):
+        print("开始读取各街道的房源页数-->", end="")
         with ThreadPoolExecutor(max_workers=50) as pool:
             for area in self.areas:
                 for town in area["towns"]:
                     pool.submit(ShellSpider.get_page_num, url=town["url"], town=town)
+        print("页数读取完毕。\n")
 
     def start(self):
         """根据每页的链接，来进行爬取"""
         self.get_areas()
+        self.get_towns_by_area()
+        self.get_pages_by_town()
 
     def save_data(self):
         """把爬取到的数据，保存到excel"""
+        pass
 
 
 if __name__ == '__main__':
     my_spider = ShellSpider("shell")
-    print(my_spider)
-    my_spider.get_areas()
-    my_spider.get_towns_by_area()
-    my_spider.get_pages_by_town()
+    my_spider.start()
     print(my_spider.areas)
 
