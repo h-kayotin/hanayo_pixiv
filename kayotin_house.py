@@ -14,6 +14,8 @@ import pandas as pd
 import re
 from threading import RLock
 import time
+from sqlalchemy import create_engine, MetaData, Table, Column
+from sqlalchemy.types import NVARCHAR, FLOAT, DATE, Integer
 
 
 def fmt_info(src_info):
@@ -190,12 +192,43 @@ class ShellSpider:
         self.house_info_df.to_excel(excel_name, index=True)
         print("写入Excel完毕。\n")
 
+    def save_to_mysql(self):
+        """把数据从dataframe存储到mysql数据库里"""
+        host = '192.168.32.14'
+        user = 'root'
+        # 注意这里密码含有@，用%40代替
+        passwd = 'abc%401234'
+        db = 'house_data'
+        port = 3306
+        engine = create_engine(f"mysql+pymysql://{user}:{passwd}@{host}:{port}/{db}?charset=utf8")
+        table_name = f"tb_{self.city}"
+
+        # 加上日期
+        self.house_info_df["date"] = self.date_string
+
+        # 指定表字段数据类型
+        type_dict = {
+            "area": NVARCHAR(length=255),
+            "street": NVARCHAR(length=255),
+            "community": NVARCHAR(length=255),
+            "info": NVARCHAR(length=255),
+            "total": FLOAT,
+            "unit": FLOAT,
+            "date": DATE
+        }
+
+        # 指定数据类型，和表已存在，进行append
+        self.house_info_df.to_sql(table_name, engine, if_exists='append', index=False, dtype=type_dict)
+
+
 
 if __name__ == '__main__':
     start = time.time()
     my_spider = ShellSpider("shell")
     # my_spider = ShellSpider("shell", city="gz", mysql=True)
     print(my_spider)
-    my_spider.start()
-    cost_time = time.time() - start
-    print(f"运行完毕，共耗时{cost_time:.2f}秒。")
+    # my_spider.start()
+    # cost_time = time.time() - start
+    # print(f"运行完毕，共耗时{cost_time:.2f}秒。")
+    my_spider.house_info_df = pd.read_excel(io="datas/house/上海2023-07-17/房价数据.xlsx", index_col="id")
+    my_spider.save_to_mysql()
