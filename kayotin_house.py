@@ -221,14 +221,13 @@ class ShellSpider:
         self.house_info_df.to_sql(table_name, engine, if_exists='append', index=False, dtype=type_dict)
 
 
-
 if __name__ == '__main__':
     start = time.time()
     my_spider = ShellSpider("shell")
     # my_spider = ShellSpider("shell", city="gz", mysql=True)
     print(my_spider)
-    # my_spider.start()
-    # cost_time = time.time() - start
-    # print(f"运行完毕，共耗时{cost_time:.2f}秒。")
-    my_spider.house_info_df = pd.read_excel(io="datas/house/上海2023-07-17/房价数据.xlsx", index_col="id")
-    my_spider.save_to_mysql()
+    my_spider.start()
+    cost_time = time.time() - start
+    print(f"运行完毕，共耗时{cost_time:.2f}秒。")
+    # my_spider.house_info_df = pd.read_excel(io="datas/house/上海2023-07-17/房价数据.xlsx", index_col="id")
+    # my_spider.save_to_mysql()
