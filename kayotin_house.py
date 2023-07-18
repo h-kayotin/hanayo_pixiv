@@ -43,11 +43,12 @@ class ShellSpider:
         "sh": "上海",
         "gz": "广州"
     }
-    columns = ["行政区", "街道", "小区", "房屋信息", "总价（万元）", "单价（元）"]
+    columns = ["area", "street", "community", "info", "total", "unit"]
     house_info_df = pd.DataFrame(columns=columns, index=range(0))
+    house_info_df.rename_axis("id")
     lock = RLock()
 
-    def __init__(self, name, city="sh", mysql=False):
+    def __init__(self, name, city="sh"):
         self.name = name
         self.city = city
         self.city_cn = ShellSpider.city_names[self.city]
@@ -56,7 +57,6 @@ class ShellSpider:
         self.save_path = self.check_folder()
         self.areas = list()
         self.excel_name = f"{self.save_path}/房价数据.xlsx"
-        self.is_mysql = mysql
 
     def __str__(self):
         return f"开始爬取来自{self.name}的{self.city_cn}的二手房数据，今天是{self.date_string}。"
@@ -79,7 +79,7 @@ class ShellSpider:
         for item in links_items:
             area = {
                 "name_cn": item.text,
-                "url": f"https://sh.ke.com/{item.get('href')}",
+                "url": f"https://{self.city}.ke.com/{item.get('href')}",
                 "towns": [
                     # {
                     #     "name": "北蔡",
@@ -92,7 +92,7 @@ class ShellSpider:
         print(f"{self.city_cn}的{len(self.areas)}个区的信息已获取完毕。\n")
 
     @staticmethod
-    def get_towns(url, area):
+    def get_towns(url, area, city):
         """获取每个区下面有几个镇，比如普陀区真如板块"""
         bs_html = ShellSpider.get_bs_html(url)
         divs = bs_html.find_all("div", {"data-role": "ershoufang"})
@@ -100,7 +100,7 @@ class ShellSpider:
         for item in items:
             town = {
                 "name": item.text,
-                "url": f"https://sh.ke.com/{item.get('href')}"
+                "url": f"https://{city}.ke.com/{item.get('href')}"
             }
             area["towns"].append(town)
 
@@ -119,8 +119,12 @@ class ShellSpider:
             "class": "page-box house-lst-page-box",
             "comp-module": "page"
         })
-        page_dict = json.loads(pages[0].get("page-data"))
-        town["page_num"] = page_dict["totalPage"]
+        if len(pages):
+            # 有些街道可能没房子，就么有页码
+            page_dict = json.loads(pages[0].get("page-data"))
+            town["page_num"] = page_dict["totalPage"]
+        else:
+            town["page_num"] = 0
 
     def get_towns_by_area(self):
         """根据各个区域，获取共有多少镇"""
@@ -128,7 +132,7 @@ class ShellSpider:
         town_total = 0
         with ThreadPoolExecutor(max_workers=16) as pool:
             for area in self.areas:
-                pool.submit(ShellSpider.get_towns, url=area["url"], area=area)
+                pool.submit(ShellSpider.get_towns, url=area["url"], area=area, city=self.city)
         for area in self.areas:
             town_total += len(area["towns"])
         print(f"街道数量共有{town_total}个获取完毕。\n")
@@ -147,6 +151,9 @@ class ShellSpider:
             for area in self.areas:
                 for town in area["towns"]:
                     print(f"开始读取{town['name']}的数据-->")
+                    if not town["page_num"]:
+                        # 有些区域没房子，那么就跳过
+                        continue
                     for page_num in range(1, town["page_num"] + 1):
                         url = f"{town['url']}pg{page_num}/"
                         pool.submit(ShellSpider.get_info,
@@ -171,10 +178,10 @@ class ShellSpider:
             ShellSpider.lock.acquire()
             ShellSpider.house_info_df.loc[len(ShellSpider.house_info_df)] = row
             # 写入后解锁
+            if len(ShellSpider.house_info_df) % 2000 == 0:
+                print(f"爬虫全力运行中，本次读取了{town_name}的一页数据，当前Dataframe中"
+                      f"有{len(ShellSpider.house_info_df)}条数据。")
             ShellSpider.lock.release()
-        if len(ShellSpider.house_info_df) % 1000 >= 900:
-            print(f"爬虫全力运行中，本次读取了{town_name}的一页数据，当前Dataframe中"
-                  f"有{len(ShellSpider.house_info_df)}条数据。")
 
     def start(self):
         """根据每页的链接，来进行爬取"""
@@ -188,13 +195,15 @@ class ShellSpider:
     def save_data(self):
         """把爬取到的数据，保存到excel"""
         print("开始写入到Excel--->", end="")
-        excel_name = f"{self.save_path}/房价数据.xlsx"
+        excel_name = f"{self.save_path}/房价数据_{self.city_cn}_{self.date_string}.xlsx"
         self.house_info_df.to_excel(excel_name, index=True)
         print("写入Excel完毕。\n")
 
     def save_to_mysql(self):
         """把数据从dataframe存储到mysql数据库里"""
-        host = '192.168.32.14'
+        print("开始将数据存储到Mysql数据库中-->")
+        # 输入数据库的连接信息
+        host = '192.168.32.11'
         user = 'root'
         # 注意这里密码含有@，用%40代替
         passwd = 'abc%401234'
@@ -211,7 +220,7 @@ class ShellSpider:
             "area": NVARCHAR(length=255),
             "street": NVARCHAR(length=255),
             "community": NVARCHAR(length=255),
-            "info": NVARCHAR(length=255),
+            "info": NVARCHAR(length=1024),
             "total": FLOAT,
             "unit": FLOAT,
             "date": DATE
@@ -219,15 +228,21 @@ class ShellSpider:
 
         # 指定数据类型，和表已存在，进行append
         self.house_info_df.to_sql(table_name, engine, if_exists='append', index=False, dtype=type_dict)
+        print(f"{len(self.house_info_df)}条数据已成功存储到Mysql中^_^")
 
 
 if __name__ == '__main__':
     start = time.time()
-    my_spider = ShellSpider("shell")
-    # my_spider = ShellSpider("shell", city="gz", mysql=True)
+    # my_spider = ShellSpider("shell")
+    # 爬取其他城市数据
+    my_spider = ShellSpider("shell", city="gz")
     print(my_spider)
+
+    # 爬取数据时运行start，如果只是存数据库，请把下面这行注释掉
     my_spider.start()
     cost_time = time.time() - start
     print(f"运行完毕，共耗时{cost_time:.2f}秒。")
+
+    # 以下代码用于读取excel数据，存储到mysql
     # my_spider.house_info_df = pd.read_excel(io="datas/house/上海2023-07-17/房价数据.xlsx", index_col="id")
     # my_spider.save_to_mysql()

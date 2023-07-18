@@ -147,8 +147,32 @@ city_names = {
 然后在main中做如下修改：
 
 ```python
-my_spider = ShellSpider("shell", city="gz", mysql=True)
+my_spider = ShellSpider("shell", city="gz")
 ```
 
 > 默认保存在Excel文件，需要要mysql，请设置mysql为true
->
+
+数据库结构如下：
+
+```python
+CREATE table tb_sh
+(
+house_id int auto_increment COMMENT "编号",
+area VARCHAR(255) not null comment "区",
+street VARCHAR(255) not null comment "街道",
+community VARCHAR(255) comment "小区",
+info VARCHAR(1024) comment "房子信息",
+total FLOAT comment "总价（万元）",
+unit FLOAT comment "单价（元）",
+date DATE comment "日期",
+PRIMARY key (house_id)
+)
+```
+
+运行如下代码保存到数据库：
+
+```python
+# 以下代码用于读取excel数据，存储到mysql
+    # my_spider.house_info_df = pd.read_excel(io="datas/house/上海2023-07-17/房价数据.xlsx", index_col="id")
+    # my_spider.save_to_mysql()
+```
