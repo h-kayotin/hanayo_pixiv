@@ -18,6 +18,16 @@ from sqlalchemy import create_engine, MetaData, Table, Column
 from sqlalchemy.types import NVARCHAR, FLOAT, DATE, Integer
 
 
+def print_now():
+    # 获取当前日期和时间
+    now = datetime.datetime.now()
+
+    # 格式化为字符串
+    date_str = now.strftime('%Y-%m-%d')  # 格式化为年-月-日
+    time_str = now.strftime('%H:%M:%S')  # 格式化为时:分:秒
+    return f"{date_str} {time_str}"
+
+
 def fmt_info(src_info):
     """格式化一下获取到的房子信息，去掉换行和空格"""
     info = str(src_info).replace("\n", "").replace(" ", "")
@@ -150,7 +160,7 @@ class ShellSpider:
         with ThreadPoolExecutor(max_workers=50) as pool:
             for area in self.areas:
                 for town in area["towns"]:
-                    print(f"开始读取{town['name']}的数据-->")
+                    print(f"开始读取{town['name']}的数据-->{print_now()}")
                     if not town["page_num"]:
                         # 有些区域没房子，那么就跳过
                         continue
@@ -179,8 +189,8 @@ class ShellSpider:
             ShellSpider.house_info_df.loc[len(ShellSpider.house_info_df)] = row
             # 写入后解锁
             if len(ShellSpider.house_info_df) % 2000 == 0:
-                print(f"爬虫全力运行中，本次读取了{town_name}的一页数据，当前Dataframe中"
-                      f"有{len(ShellSpider.house_info_df)}条数据。")
+                print(f"爬虫全力运行中，正在读取{town_name}的数据，已读取"
+                      f"{len(ShellSpider.house_info_df)}条数据--->{print_now()}")
             ShellSpider.lock.release()
 
     def start(self):
@@ -189,7 +199,7 @@ class ShellSpider:
         self.get_towns_by_area()
         self.get_pages_by_town()
         self.get_info_by_page()
-        print(f"共获取到{len(self.house_info_df)}条数据。")
+        print(f"共获取到{len(self.house_info_df)}条数据{print_now()}")
         self.save_data()
 
     def save_data(self):
@@ -235,7 +245,7 @@ if __name__ == '__main__':
     start = time.time()
     # my_spider = ShellSpider("shell")
     # 爬取其他城市数据
-    my_spider = ShellSpider("shell", city="gz")
+    my_spider = ShellSpider("shell", city="sh")
     print(my_spider)
 
     # 爬取数据时运行start，如果只是存数据库，请把下面这行注释掉
