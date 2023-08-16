@@ -19,12 +19,18 @@ P站需要登录才能访问，以下步骤可以获取cookie
 
 登录成功后打开F12开发者模式
 
-点击网络（network），然后过滤（filter）：www.pixiv.net
+点击网络（network），然后过滤（filter）：www.pixiv.net。
+（如果已登录的话，也可以筛选右上角的文档）
 
 如下图所示：
 
 <p align="center">
   <img src="static/get_cookie.png" alt="如何获取cookie" width=800 />
+</p>
+
+如果已登录的话，也可以筛选右上角的文档，这样更好找一点：
+<p align="center">
+  <img src="static/logined_cookie.png" alt="如何获取cookie" width=800 />
 </p>
 
 ### 如何使用
