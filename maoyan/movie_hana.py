@@ -8,12 +8,19 @@ Date 2024/1/4
 import re
 import requests
 from bs4 import BeautifulSoup
+from fontTools.ttLib import TTFont
+import os
+import xml.dom.minidom as xml_dom
 
 header = {
     'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) '
                   'Chrome/67.0.3396.87 Safari/537.36',
     'Referer': 'https://tfz.maoyan.com/'
 }
+
+
+# 下载请求电影页面的woff字体到本地
+
 
 
 class MovieSpider(object):
