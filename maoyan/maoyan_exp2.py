@@ -15,9 +15,9 @@ from time import sleep
 
 def get_html(url):
     """
-
-    :param url:
-    :return:
+    进行请求，获取html代码
+    :param url:请求地址
+    :return:返回resp.text
     """
     headers = {'User-Agent': agent}
     resp = requests.get(url, headers=headers)
@@ -32,7 +32,7 @@ def get_html(url):
 
 def parse_list(html):
     """
-
+    对电影列表进行处理
     :param html: 传递进来电影列表的页面
     :return: 返回一个列表的url
     """

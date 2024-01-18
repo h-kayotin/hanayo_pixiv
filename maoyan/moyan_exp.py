@@ -11,21 +11,28 @@ from bs4 import BeautifulSoup
 from fontTools.ttLib import TTFont
 import os
 import xml.dom.minidom as xml_dom
+from lxml import etree
 
 header = {
-    'Accept': '*/*;',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,'
+              'image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
     'Connection': 'keep-alive',
     'Accept-Language': 'zh-CN,zh;q=0.9',
     'Accept-Encoding': 'gzip, deflate, br',
-    'Host': 'maoyan.com',
+    'Host': 'www.maoyan.com',
     'Referer': 'https://maoyan.com/',
-    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) '
-                  'Chrome/67.0.3396.87 Safari/537.36',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)'
+                  ' Chrome/120.0.0.0 Safari/537.36'
 }
 
 
-def cmp(a, b):
-    return (a > b) - (a < b)
+def get_font_url(url):
+    resp = requests.get(url, headers=header)
+    resp_html = resp.text
+    print(resp_html)
+    e_t = etree.HTML(resp_html)
+    font_url = e_t.xpath('/html/head/style/text()')
+    print(font_url)
 
 
 def down_font(url):
@@ -78,23 +85,9 @@ def find_star(titles):
                 print(new_font[j])
 
 
-def web(url):
-    db_data = requests.get(url, headers=header)
-    soup = BeautifulSoup(db_data.text.replace("&#x", ""), 'lxml')
 
-    titles = soup.select(
-        'body > div.banner > div > div.celeInfo-right.clearfix > div.movie-stats-container > div > div > span > span')
-    wot_font = soup.select('head > style')
-
-    wot_font_list = str(wot_font[0]).split('\n')
-    maoyan_wotf = wot_font_list[5].replace(' ', '')\
-        .replace('url(\'//', '').replace('format(\'woff\');', '').replace('\')', '')
-
-    down_font(maoyan_wotf)
-
-    find_star(titles)
 
 
 if __name__ == '__main__':
     test_url = 'https://maoyan.com/films/42964'
-    web(test_url)
+    get_font_url(test_url)
