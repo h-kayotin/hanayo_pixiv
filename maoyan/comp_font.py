@@ -49,3 +49,4 @@ def comp_font(font_name):
                 new_dict[n_uni] = font_dict[demo_uni]
 
     print(new_dict)
+    return new_dict
