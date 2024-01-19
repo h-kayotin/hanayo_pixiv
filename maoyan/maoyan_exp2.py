@@ -55,7 +55,7 @@ def parse_index(html):
                        '/div[@class="name"]/text()')
     actors = fmt_actors(actors)
     return {
-        'name': name, 'em_name': en_name, 'movie_type': movie_type, 'actors': actors
+        'name': name, 'en_name': en_name, 'movie_type': movie_type, 'actors': actors
     }
 
 
@@ -71,14 +71,17 @@ def main():
     for page_num in range(page_size):
         s_url = f"https://www.maoyan.com/films?showType=3&yearId=13&sortId=3&offset={30*page_num}"
         list_html = get_html(s_url)
-        print(list_html)
-        # list_url = parse_list(list_html)
-        # for url in list_url:
-        #     print(url)
-        #     info_html = get_html(url)
-        #     movie = parse_index(info_html)
-        #     print(movie)
+        list_url = parse_list(list_html)
+        for url in list_url:
+            print(url)
+            info_html = get_html(url)
+            movie = parse_index(info_html)
+            print(movie)
 
 
 if __name__ == '__main__':
-    main()
+    # main()
+
+    info_html = get_html("https://www.maoyan.com/films/1229214")
+    movie = parse_index(info_html)
+    print(movie)
