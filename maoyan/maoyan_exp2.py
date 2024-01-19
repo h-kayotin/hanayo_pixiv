@@ -1,5 +1,6 @@
 """
-maoyan_exp2 - 
+maoyan_exp2 - 实际上该代码是无用的，理解一下逻辑就行了。
+一开始返回的html中不包含电影详情信息，电影信息是后续通过ajax得到的，需要解决ajax的问题
 
 https://www.maoyan.com/films?showType=3&yearId=13&sortId=3&offset=
 
