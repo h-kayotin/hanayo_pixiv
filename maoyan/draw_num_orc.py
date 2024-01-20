@@ -11,7 +11,11 @@ import ddddocr
 
 
 def read_num_by_draw(woff_font):
-    # 将woff保存成ttf格式字体
+    """
+    绘制图片通过ddddocr库进行图片识别
+    :param woff_font: 字体文件
+    :return: 字体字典
+    """
     ttf_font = "font/font.ttf"
     img_size = 512
     font = TTFont(woff_font)

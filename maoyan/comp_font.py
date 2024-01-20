@@ -30,8 +30,6 @@ def comp_font(font_name):
     demo_font = TTFont("font/e3dfe524.woff")
     demo_list = demo_font.getGlyphNames()[1:-1]
     demo_uni_list = demo_font.getGlyphOrder()[2:]
-    print(demo_list)
-    print(demo_uni_list)
 
     # 打开新字体
     new_font = TTFont(f"font/{font_name}")
@@ -40,6 +38,7 @@ def comp_font(font_name):
     new_list = new_font.getGlyphNames()[1:-1]
     new_uni_list = new_font.getGlyphOrder()[2:]
 
+    # 通过两层循环进行比较，找出新的对应关系
     new_dict = dict()
     for n_uni in new_uni_list:
         n_obj = new_font['glyf'][n_uni]
