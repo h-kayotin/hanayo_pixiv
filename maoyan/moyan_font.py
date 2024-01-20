@@ -60,8 +60,8 @@ def down_font(font_name):
 
 def get_score(url):
     resp = requests.get(url, headers=header)
-    resp_html = resp.text
-    print(resp.json())
+    resp_html = resp.content
+    print(resp_html)
     # e_t = etree.HTML(resp_html)
     # score = e_t.xpath('//span[@class="stonefont"]/text()')[0]
     # people_count = e_t.xpath('//span[@class="stonefont"]/text()')[1]
